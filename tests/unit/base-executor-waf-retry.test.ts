@@ -37,12 +37,15 @@ test("WAF_RETRY_CONFIG differs from generic RETRY_CONFIG (different problem)", a
 
 async function runContentBlocked400(provider: string, model: string) {
   const { DefaultExecutor } = await import("../../open-sse/executors/default.ts");
+  const { BaseExecutor } = await import("../../open-sse/executors/base.ts");
+  const { delayMs, backoffMultiplier, maxAttempts } = BaseExecutor.WAF_RETRY_CONFIG;
+  const maxDelayMs = delayMs * Math.pow(backoffMultiplier, maxAttempts - 1);
   const originalFetch = globalThis.fetch;
   const originalSetTimeout = globalThis.setTimeout;
   const retryDelays: number[] = [];
   let calls = 0;
   globalThis.setTimeout = ((fn: () => void, ms?: number, ...args: unknown[]) => {
-    if (typeof ms === "number" && ms >= 750 && ms <= 3000) {
+    if (typeof ms === "number" && ms >= Math.round(delayMs / 2) && ms <= maxDelayMs) {
       retryDelays.push(ms);
       return originalSetTimeout(fn, 0, ...args);
     }

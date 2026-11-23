@@ -29,22 +29,22 @@ The WAF inspects `messages[].content` only. It does **not** inspect:
 
 ## Always-blocked patterns (case-insensitive)
 
-| Pattern                       | Notes                                  |
-|-------------------------------|----------------------------------------|
-| Any `Lorem ipsum` variant     | Full Latin lorem vocabulary is blocked |
-| `language model` (alone)      | "the language model" and "large language model" pass |
-| `virtual assistant`           | "AI assistant" passes                   |
-| `I'm here to help`            | "here to help" alone also blocks        |
-| `Claude, made by Anthropic`   | Full phrase only                        |
+| Pattern                     | Notes                                                |
+| --------------------------- | ---------------------------------------------------- |
+| Any `Lorem ipsum` variant   | Full Latin lorem vocabulary is blocked               |
+| `language model` (alone)    | "the language model" and "large language model" pass |
+| `virtual assistant`         | "AI assistant" passes                                |
+| `I'm here to help`          | "here to help" alone also blocks                     |
+| `Claude, made by Anthropic` | Full phrase only                                     |
 
 ## Almost-always-blocked patterns
 
-| Pattern           | Notes                                                   |
-|-------------------|---------------------------------------------------------|
-| `placeholder`     | When it stands alone (not as a parameter name, etc.)  |
-| `dummy data`      | Common seed phrase for fixtures                        |
-| `foo bar baz`     | Canonical placeholder phrase                           |
-| Repeated short tokens (`AAA BBB CCC`, `test test test`) | Detector for keyword stuffing |
+| Pattern                                                 | Notes                                                |
+| ------------------------------------------------------- | ---------------------------------------------------- |
+| `placeholder`                                           | When it stands alone (not as a parameter name, etc.) |
+| `dummy data`                                            | Common seed phrase for fixtures                      |
+| `foo bar baz`                                           | Canonical placeholder phrase                         |
+| Repeated short tokens (`AAA BBB CCC`, `test test test`) | Detector for keyword stuffing                        |
 
 ## Behavior under load
 
@@ -61,10 +61,12 @@ makes multiple tool-use / message-send calls in quick succession.
    URL. The gap is well below human perception of latency and prevents
    the WAF from activating on normal traffic.
 
-2. **`BaseExecutor.WAF_RETRY_CONFIG`** — when an upstream returns
-   `400 content-blocked`, the executor retries the same URL with
-   exponential backoff (1.5 s, 3.0 s, max 2 attempts). After the backoff
-   the WAF usually relaxes and the retry succeeds.
+2. **`BaseExecutor.WAF_RETRY_CONFIG`** — only for the `agentrouter` provider,
+   when the upstream returns `400 content-blocked` and `skipUpstreamRetry`
+   is false, the executor retries the same URL with jittered exponential
+   backoff (0.75–1.5 s, then 1.5–3.0 s, at most 2 retries). Other providers
+   do not receive this WAF-specific retry. After the backoff the WAF usually
+   relaxes and the retry succeeds.
 
 3. **`tests/unit/compression/harness.test.ts`** — the test fixture
    `longInput` was changed from `"lorem ipsum dolor sit amet ".repeat(40)`
