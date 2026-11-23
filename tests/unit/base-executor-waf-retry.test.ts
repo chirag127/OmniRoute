@@ -34,3 +34,60 @@ test("WAF_RETRY_CONFIG differs from generic RETRY_CONFIG (different problem)", a
   // because the WAF's per-IP suspicion bucket relaxes more slowly.
   assert.ok(waf.delayMs >= 500, "WAF initial delay should be >= 500ms");
 });
+
+async function runContentBlocked400(provider: string, model: string) {
+  const { DefaultExecutor } = await import("../../open-sse/executors/default.ts");
+  const originalFetch = globalThis.fetch;
+  const originalSetTimeout = globalThis.setTimeout;
+  const retryDelays: number[] = [];
+  let calls = 0;
+  globalThis.setTimeout = ((fn: () => void, ms?: number, ...args: unknown[]) => {
+    if (typeof ms === "number" && ms >= 750 && ms <= 3000) {
+      retryDelays.push(ms);
+      return originalSetTimeout(fn, 0, ...args);
+    }
+    return originalSetTimeout(fn, ms, ...args);
+  }) as typeof setTimeout;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ error: { code: "content_blocked" } }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }) as typeof fetch;
+  try {
+    const result = await new DefaultExecutor(provider).execute({
+      model,
+      body: { messages: [{ role: "user", content: "hi" }] },
+      stream: false,
+      credentials: { apiKey: "synthetic-key", connectionId: "conn-a" },
+    });
+    return { status: result.response.status, calls, retryDelays };
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.setTimeout = originalSetTimeout;
+  }
+}
+
+test("400 content-blocked is not replayed for non-agentrouter providers", async () => {
+  const r = await runContentBlocked400("openai", "gpt-4o");
+  assert.equal(r.status, 400);
+  assert.equal(r.calls, 1);
+  assert.deepEqual(r.retryDelays, []);
+});
+
+test("400 content-blocked keeps the jittered WAF retry for agentrouter", async () => {
+  const { BaseExecutor } = await import("../../open-sse/executors/base.ts");
+  const { maxAttempts, delayMs, backoffMultiplier } = BaseExecutor.WAF_RETRY_CONFIG;
+  const r = await runContentBlocked400("agentrouter", "claude-opus-4-8");
+  assert.equal(r.status, 400);
+  assert.equal(r.calls, 1 + maxAttempts);
+  assert.equal(r.retryDelays.length, maxAttempts);
+  r.retryDelays.forEach((ms, i) => {
+    const base = delayMs * Math.pow(backoffMultiplier, i);
+    assert.ok(
+      ms >= Math.round(base / 2) && ms <= base,
+      `delay ${ms} outside [${base / 2}, ${base}]`
+    );
+  });
+});
