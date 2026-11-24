@@ -1818,6 +1818,7 @@ export class BaseExecutor {
         // 429/401/fallback chain. See docs/security/AGENTROUTER_WAF.md.
         if (
           !skipUpstreamRetry &&
+          this.provider === "agentrouter" &&
           response.status === HTTP_STATUS.BAD_REQUEST &&
           (retryAttemptsByUrl[urlIndex] ?? 0) < BaseExecutor.WAF_RETRY_CONFIG.maxAttempts
         ) {

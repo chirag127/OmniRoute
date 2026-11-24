@@ -115,6 +115,18 @@ export const NATIVE_ASSET_ENTRIES = [
 
 /** @type {{label:string, src:string[], dest:string[]}[]} */
 export const EXTRA_MODULE_ENTRIES = [
+  // The separately bundled compression worker imports SQLite outside Next's trace.
+  // Native assets alone do not include its JavaScript loader or package metadata.
+  {
+    label: "compression worker external: better-sqlite3",
+    src: ["node_modules", "better-sqlite3"],
+    dest: ["node_modules", "better-sqlite3"],
+  },
+  {
+    label: "better-sqlite3 dependency: node-addon-api",
+    src: ["node_modules", "node-addon-api"],
+    dest: ["node_modules", "node-addon-api"],
+  },
   // The source CLI loads tsx/esm dynamically, outside Next's traced server graph.
   // Keep its compiler and the installed target-platform binary together (#12152).
   { label: "tsx CLI loader", src: ["node_modules", "tsx"], dest: ["node_modules", "tsx"] },
