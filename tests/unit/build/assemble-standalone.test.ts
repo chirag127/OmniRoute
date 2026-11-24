@@ -36,6 +36,10 @@ function seedSidecarSources(root: string) {
   const files = [
     "node_modules/wreq-js/rust/lib.so",
     "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
+    "node_modules/better-sqlite3/package.json",
+    "node_modules/better-sqlite3/lib/index.js",
+    "node_modules/better-sqlite3/prebuilds/win32-x64.node",
+    "node_modules/node-addon-api/package.json",
     "src/mitm/tproxy/native/build/Release/transparent.node",
     "node_modules/@swc/helpers/package.json",
     "node_modules/pino-abstract-transport/index.js",
@@ -245,6 +249,10 @@ test("async and sync sidecar copy paths produce identical bundle trees", async (
   // regression guard for the two "Cannot find module/package" crashes
   // reproduced on a real self-hosted deployment.
   for (const runtimeOnlyFile of [
+    "node_modules/better-sqlite3/package.json",
+    "node_modules/better-sqlite3/lib/index.js",
+    "node_modules/better-sqlite3/prebuilds/win32-x64.node",
+    "node_modules/node-addon-api/package.json",
     "node_modules/ioredis/package.json",
     "node_modules/ioredis/built/index.js",
     "node_modules/bcryptjs/package.json",
