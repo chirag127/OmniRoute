@@ -267,12 +267,12 @@ For any non-trivial change, read the matching deep-dive first:
 
 ## Planning & Research Artifacts
 
-`_tasks/` is a **separate, isolated git repository** that is gitignored by the main repo (`.gitignore` → `_tasks/`) — the canonical home for working artifacts (plans, specs/designs, research, hand-offs), versioned in their own repo instead of polluting the main OmniRoute tree. **Hard rule — never write planning / research output under `docs/` or the repo root.** Whenever any plan/spec/research generator runs in this project (superpowers or otherwise), save to `_tasks/` using the filename convention:
+`_tasks/` is a **separate, isolated git repository** that is gitignored by the main repo (`.gitignore` → `_tasks/`) — the canonical home for working artifacts (plans, specs/designs, research, hand-offs), versioned in their own repo instead of polluting the main OmniRoute tree. **Hard rule — never write planning / research output under `docs/` or the repo root.** Whenever any plan/spec/research generator runs in this project, save to `_tasks/` using the filename convention:
 
 | Artifact       | Save here                                                     |
 | -------------- | ------------------------------------------------------------- |
-| Plans          | `_tasks/superpowers/plans/YYYY-MM-DD-<feature>.md`            |
-| Specs / design | `_tasks/superpowers/specs/YYYY-MM-DD-<topic>-design.md`       |
+| Plans          | `_tasks/plans/YYYY-MM-DD-<feature>.md`                        |
+| Specs / design | `_tasks/specs/YYYY-MM-DD-<topic>-design.md`                   |
 | Research       | `_tasks/research/…`                                           |
 | Hand-offs      | `_tasks/hands-off/<YYYY-MM-DD>_<branch>_v<versão>_sess-<id>/` |
 
@@ -459,3 +459,61 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Assistant notes migrated from CLAUDE.md
+
+**All project rules live in [`AGENTS.md`](AGENTS.md)** — the single source of truth for every AI
+assistant (architecture, conventions, testing, quality gates, git workflow, the 23 Hard Rules,
+PII learnings). Read it in full; do not re-add project rules here. Everything below applies ONLY
+to Claude Code — operational refinements of rules already defined in `AGENTS.md`.
+
+## Worktree isolation — Claude Code specifics
+
+The full mandatory worktree protocol (base-branch confirmation, `.claude/worktrees/` canonical
+path, `cp -al` node_modules, teardown rules) is in
+[`docs/ops/WORKTREE_ISOLATION.md`](docs/ops/WORKTREE_ISOLATION.md) (summarized in `AGENTS.md` →
+Git Workflow → "Worktree isolation"). Claude-Code-specific points:
+
+- Confirm the base branch with the operator via `AskUserQuestion` (Hard Rule #19) unless they
+  already told you.
+- Prefer the native `EnterWorktree` tool — it already creates worktrees under
+  `.claude/worktrees/` (the canonical path). Create the worktree with the documented `git
+worktree add` command, then call `EnterWorktree` with its `path`.
+
+## Cross-session safety — Claude Code specifics
+
+Hard Rules #19/#21/#22 (in `AGENTS.md`) govern parallel sessions. Operational reminders for this
+harness:
+
+- **Replicate the `git stash` ban verbatim in the prompt of every subagent that touches git**
+  (Agent tool / Workflow scripts) — subagents do not inherit this file, and the recorded
+  recurrence of the stash incident came through a subagent.
+- Before merging or pushing to any PR you did not create _this session_, run `git worktree list`
+  and re-check `gh pr view <N> --json state,headRefOid` (Hard Rule #22b).
+- End every session with the main checkout on the branch it started on.
+
+## Planning artifacts
+
+Follow "Planning & Research Artifacts" above for plans, designs, research, and hand-offs.
+
+## Scratch / temporary files — use `_artifacts/`, not `/tmp`
+
+This project overrides the harness's default session scratchpad (`/tmp/claude-*/…`). Write
+temporary/working files — exports, generated zips, one-off intermediate outputs, anything you'd
+otherwise put in `/tmp` — to `/home/diegosouzapw/dev/proxys/OmniRoute/_artifacts/` instead.
+
+- `_artifacts/` is a root `_*` path: already gitignored (`AGENTS.md` → "Root `_*` paths"), lives
+  on disk only, never tracked.
+- Reason: keeping scratch output inside the project (vs `/tmp`) makes it trivial for the operator
+  to find and delete everything temporary in one place, instead of hunting across ephemeral
+  session-specific `/tmp` directories that vanish or accumulate untracked.
+- Do **not** confuse this with `_tasks/` (Hard Rule #23, its own private git repo for durable
+  plans/specs/research/hand-offs) — `_artifacts/` is for disposable working files only, nothing
+  here needs to survive or be versioned.
+
+## Base-green before opening PRs
+
+Before cutting a branch or opening a PR, run the base-green check (`AGENTS.md` → Git Workflow →
+"Base-green check"; project skills reference it as `.agents/skills/_shared/base-green.md`). A PR
+opened while the base tip is red must carry `⚠️ base-red inherited: #<issue>` in its body. To
+drain an accumulated red state (base tip + red PRs), use the `/sweep-reds` skill.
