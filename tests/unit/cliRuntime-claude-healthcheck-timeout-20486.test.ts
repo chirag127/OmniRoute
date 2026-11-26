@@ -34,10 +34,11 @@ test("#20486: claude healthcheck accepts a version probe slower than the old 4s 
   // A version answer after 5.1s: past the previous 4s default, inside the
   // 15s limit introduced by this PR.
   childProcess.spawn = () => {
-    const child: any = new EventEmitter();
-    child.stdout = new EventEmitter();
-    child.stderr = new EventEmitter();
-    child.kill = () => true;
+    const child = Object.assign(new EventEmitter(), {
+      stdout: new EventEmitter(),
+      stderr: new EventEmitter(),
+      kill: () => true,
+    });
     setTimeout(() => {
       child.stdout.emit("data", "2.1.157 (Claude Code)\n");
       child.emit("close", 0);

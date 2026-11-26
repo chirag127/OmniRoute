@@ -1,0 +1,1 @@
+- **fix(sse):** scope HTTP 400 `content_blocked` WAF retries to the `agentrouter` provider, avoiding unnecessary upstream calls and backoff for other providers (#1 — thanks @chirag127).
